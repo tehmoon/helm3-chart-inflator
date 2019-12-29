@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+
+# Vars:
+#   metadata.name: Helm release name
+#   gitRepository: Helm git repositoy to checkout
+#   gitRef: Git reference of the helm repository
+#   valuesFile: Path of the values.yaml to be used by helm. Defaults to the values.yaml inside of the git repository.
+
+# Dependencies:
+#   - python3
+#   - sh
+#   - git
+#   - helm3
+
+import yaml
+import sys
+
+if len(sys.argv) < 2:
+    sys.stderr.write('Missing kustom variable file\n')
+    sys.exit(2)
+
+kustom_file = sys.argv[1]
+
+with open(kustom_file) as file:
+    kustom_values = yaml.load(file, Loader=yaml.SafeLoader)
+
+env = {}
+
+if 'metadata' not in kustom_values or 'name' not in kustom_values['metadata'] or kustom_values['metadata']['name'] == "":
+            sys.stderr.write('Missing metadata.name as release name')
+            sys.exit(2)
+
+if 'gitRepository' not in kustom_values:
+    if kustom_values == "":
+        sys.stderr.write('Missing gitRepository')
+
+if 'gitRef' in kustom_values:
+    env['GIT_REFERENCE'] = kustom_values['gitRef'] 
+
+if 'valuesFile' in kustom_values:
+    env['VALUES_FILE'] = kustom_values['valuesFile']
+
+env['RELEASE_NAME'] = kustom_values['metadata']['name']
+env['GIT_REPOSITORY'] = kustom_values['gitRepository']
+
+
+payload = """
+exec 4>&1
+exec > /dev/null
+
+set -e
+set -x
+
+tmpdir=$(mktemp -d)
+trap "rm -rf ${tmpdir}" EXIT
+
+( git clone "${GIT_REPOSITORY}" "${tmpdir}"
+	cd "${tmpdir}" &&
+	git fetch -t -f &&
+    [ ! "x${GIT_REFERENCE}" = "x" ] &&
+	git reset --hard "${GIT_REFERENCE}"
+)
+
+[ "x${VALUES_FILE}" = "x" ] && VALUES_FILE=${tmpdir}/values.yaml
+
+helm template \
+	--values "${VALUES_FILE}" \
+	--name-template "${RELEASE_NAME}" \
+	"${tmpdir}" >&4
+"""
+
+import subprocess
+subprocess.run(['sh', '-c', payload], env=env, stdout=None, stderr=None)
