@@ -6,6 +6,8 @@ This is really useful if you chart is hosted on a git repository instead and you
 
 Additionally, this plugin can use a custom `values.yaml` to be used by helm. This enables the template to be kustomized by environment.
 
+Caution: by default it is using `--no-hooks`, meaning that all the helm hook won't be deployed. To deploy them, use the `showOnly` field, which will run the plugin for each files and only display it.
+
 ## Requirements:
 
    - `python3`
@@ -19,6 +21,7 @@ Additionally, this plugin can use a custom `values.yaml` to be used by helm. Thi
   - `gitRepository`: Helm git repositoy to checkout
   - `gitRef`: Git reference of the helm repository
   - `valuesFile`: Path of the values.yaml to be used by helm. Defaults to the values.yaml inside of the git repository.
+  - `showOnly`: List of chart files to only show (from --show-only cli in helm 3)
 
 ## Installing:
 
