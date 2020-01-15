@@ -22,6 +22,7 @@ Caution: by default it is using `--no-hooks`, meaning that all the helm hook won
   - `gitRef`: Git reference of the helm repository
   - `valuesFile`: Path of the values.yaml to be used by helm. Defaults to the values.yaml inside of the git repository.
   - `showOnly`: List of chart files to only show (from --show-only cli in helm 3)
+  - `copyFiles`: Copy the chart template files to the temporary directory for evaluation
 
 ## Installing:
 

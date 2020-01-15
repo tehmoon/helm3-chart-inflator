@@ -6,6 +6,7 @@
 #		gitRef: Git reference of the helm repository
 #		valuesFile: Path of the values.yaml to be used by helm. Defaults to the values.yaml inside of the git repository.
 #		showOnly: List of chart template files to only show
+# 	copyFiles: List of chart templates to copy to the temporary directory
 
 # Dependencies:
 #		- python3
@@ -17,37 +18,44 @@ import yaml
 import sys
 
 if len(sys.argv) < 2:
-		sys.stderr.write('Missing kustom variable file\n')
-		sys.exit(2)
+	sys.stderr.write('Missing kustom variable file\n')
+	sys.exit(2)
 
 kustom_file = sys.argv[1]
 
 with open(kustom_file) as file:
-		kustom_values = yaml.load(file, Loader=yaml.SafeLoader)
+	kustom_values = yaml.load(file, Loader=yaml.SafeLoader)
 
 env = {}
 
 if 'metadata' not in kustom_values or 'name' not in kustom_values['metadata'] or kustom_values['metadata']['name'] == "":
-						sys.stderr.write('Missing metadata.name as release name')
-						sys.exit(2)
+	sys.stderr.write('Missing metadata.name as release name')
+	sys.exit(2)
 
-if 'gitRepository' not in kustom_values:
-		if kustom_values == "":
-				sys.stderr.write('Missing gitRepository')
+if 'gitRepository' in kustom_values:
+	git_repository = kustom_values['gitRepository']
+	if type(git_repository) != str or git_repository == "":
+		sys.stderr.write('gitRepository must be a non empty string')
+		sys.exit(2)
+	env['GIT_REPOSITORY'] = kustom_values['gitRepository']
 
 if 'gitRef' in kustom_values:
-		env['GIT_REFERENCE'] = kustom_values['gitRef']
+	env['GIT_REFERENCE'] = kustom_values['gitRef']
 
 if 'valuesFile' in kustom_values:
-		env['VALUES_FILE'] = kustom_values['valuesFile']
+	env['VALUES_FILE'] = kustom_values['valuesFile']
 
 if 'showOnly' in kustom_values:
 	if type(kustom_values['showOnly']) != list:
 		raise('showOnly is not a list')
 	env['SHOW_ONLY'] = " ".join(kustom_values['showOnly'])
 
+if 'copyFiles' in kustom_values:
+	if type(kustom_values['copyFiles']) != list:
+		raise('copyFiles is not a list')
+	env['COPY_FILES'] = " ".join(kustom_values['copyFiles'])
+
 env['RELEASE_NAME'] = kustom_values['metadata']['name']
-env['GIT_REPOSITORY'] = kustom_values['gitRepository']
 
 
 payload = """
@@ -61,11 +69,17 @@ tmpdir=$(mktemp -d)
 trap "rm -rf ${tmpdir}" EXIT
 
 ( git clone "${GIT_REPOSITORY}" "${tmpdir}"
-	cd "${tmpdir}" &&
-	git fetch -t -f &&
-		[ ! "x${GIT_REFERENCE}" = "x" ] &&
-	git reset --hard "${GIT_REFERENCE}"
+	cd "${tmpdir}"
+	git fetch -t -f
+	[ ! "x${GIT_REFERENCE}" = "x" ] && git reset --hard "${GIT_REFERENCE}"
 )
+
+[ ! "x${COPY_FILES}" = "x" ] && {
+	for file in ${COPY_FILES}
+	do
+		cp -v "${file}" "${tmpdir}/templates/$(basename ${file})"
+	done
+}
 
 template() {
 	show_only_file=$1
