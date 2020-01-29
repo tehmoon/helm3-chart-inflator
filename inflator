@@ -16,6 +16,7 @@
 
 import yaml
 import sys
+import os
 
 if len(sys.argv) < 2:
 	sys.stderr.write('Missing kustom variable file\n')
@@ -26,7 +27,7 @@ kustom_file = sys.argv[1]
 with open(kustom_file) as file:
 	kustom_values = yaml.load(file, Loader=yaml.SafeLoader)
 
-env = {}
+env = os.environ.copy()
 
 if 'metadata' not in kustom_values or 'name' not in kustom_values['metadata'] or kustom_values['metadata']['name'] == "":
 	sys.stderr.write('Missing metadata.name as release name')
